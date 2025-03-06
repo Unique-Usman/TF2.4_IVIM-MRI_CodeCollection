@@ -72,7 +72,7 @@ jobs:
       - name: Upload raw data
         uses: actions/upload-artifact@v4
         with:
-            name: Working_Data
+            name: Working_Data_${{ matrix.algorithm }}_${{ matrix.SNR }}
             retention-days: 1
             path: |
               test_output_${{ matrix.algorithm }}_${{ matrix.SNR }}.csv
@@ -87,14 +87,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: Working_Data_*
+          merge-multiple: true
+      - name: List downloaded files
+        run: find artifacts -type f | sort
       - name: Merge fitting results
         run: |
-          head -n 1 $(ls artifacts/Working_Data/test_output_*.csv | head -n 1) > test_output.csv
-          tail -q -n +2 artifacts/Working_Data/test_output_*.csv >> test_output.csv
+          # Find the first output file to get the header
+          FIRST_OUTPUT=$(find artifacts -name "test_output_*.csv" | head -n 1)
+          head -n 1 "$FIRST_OUTPUT" > test_output.csv
+          find artifacts -name "test_output_*.csv" -exec tail -q -n +2 {} \; >> test_output.csv
       - name: Merge timing results
         run: |
-          head -n 1 $(ls artifacts/Working_Data/test_duration_*.csv | head -n 1) > test_duration.csv
-          tail -q -n +2 artifacts/Working_Data/test_duration_*.csv >> test_duration.csv
+          FIRST_DURATION=$(find artifacts -name "test_duration_*.csv" | head -n 1)
+          head -n 1 "$FIRST_DURATION" > test_duration.csv
+          find artifacts -name "test_duration_*.csv" -exec tail -q -n +2 {} \; >> test_duration.csv
       - name: Upload merged artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -166,7 +173,7 @@ jobs:
         with:
           name: Data
       - name: Test against previous results
-        run: Rscript --vanilla tests/IVIMmodels/unit_tests/compare.r test_output.csv test_reference.csv tests/IVIMmodels/unit_tests/reference_output.csv test_results.csv
+        run: Rscript --vanilla tests/IVIMmodels/unit_tests/compare.r tests/IVIMmodels/unit_tests/reference_output.csv test_results.csv
       - name: Upload data
         uses: actions/upload-artifact@v4
         if: always()
